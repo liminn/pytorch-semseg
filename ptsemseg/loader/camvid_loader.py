@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from torch.utils import data
 from ptsemseg.augmentations import Compose, RandomHorizontallyFlip, RandomRotate
 
-
 class camvidLoader(data.Dataset):
     def __init__(
         self,
