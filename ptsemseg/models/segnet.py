@@ -2,7 +2,6 @@ import torch.nn as nn
 
 from ptsemseg.models.utils import segnetDown2, segnetDown3, segnetUp2, segnetUp3
 
-
 class segnet(nn.Module):
     def __init__(self, n_classes=21, in_channels=3, is_unpooling=True):
         super(segnet, self).__init__()

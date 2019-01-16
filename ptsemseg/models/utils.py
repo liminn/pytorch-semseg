@@ -241,6 +241,7 @@ class segnetDown3(nn.Module):
         return outputs, indices, unpooled_shape
 
 
+# 一次上采样，两次卷积
 class segnetUp2(nn.Module):
     def __init__(self, in_size, out_size):
         super(segnetUp2, self).__init__()
@@ -249,12 +250,13 @@ class segnetUp2(nn.Module):
         self.conv2 = conv2DBatchNormRelu(in_size, out_size, 3, 1, 1)
 
     def forward(self, inputs, indices, output_shape):
+        # 疑问：output_size是如何控制输出尺寸的？
         outputs = self.unpool(input=inputs, indices=indices, output_size=output_shape)
         outputs = self.conv1(outputs)
         outputs = self.conv2(outputs)
         return outputs
 
-
+# 一次上采样，三次卷积
 class segnetUp3(nn.Module):
     def __init__(self, in_size, out_size):
         super(segnetUp3, self).__init__()
