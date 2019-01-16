@@ -76,7 +76,7 @@ class fcn32s(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout2d(),
             # 通过1x1卷积，将通道数变为num_classes
-            # 输出尺寸为7x7xc
+            # 输出尺寸为7x7x21
             nn.Conv2d(4096, self.n_classes, 1),
         )
 
@@ -95,11 +95,11 @@ class fcn32s(nn.Module):
         conv4 = self.conv_block4(conv3)
         # Block5输出尺寸：7x7x512
         conv5 = self.conv_block5(conv4)
-        # 输出尺寸为7x7x num_classes
+        # 输出尺寸为7x7x21
         # 详见__init__中self.classifier相关注释
         score = self.classifier(conv5)
         # 将score上采样32倍，恢复到原图尺寸
-        # 输出尺寸：224x224x num_classes
+        # 输出尺寸：224x224x21
         # 至此，即FCN-32s模型
         out = F.upsample(score, x.size()[2:])
 
@@ -224,7 +224,7 @@ class fcn16s(nn.Module):
         # 和block_4输出进行逐像素相加，输出尺寸为14x14x21
         score += score_pool4
         # 将score上采样16倍，恢复到原图尺寸
-        # 输出尺寸：224x224x num_classes
+        # 输出尺寸：224x224x21
         # 至此，即FCN-16s模型
         out = F.upsample(score, x.size()[2:])
 
@@ -389,7 +389,7 @@ class fcn8s(nn.Module):
             # 和block_3输出进行逐像素相加，输出尺寸为28x28x21
             score += score_pool3
             # 将score上采样8倍，恢复到原图尺寸
-            # 输出尺寸：224x224x num_classes
+            # 输出尺寸：224x224x21
             # 至此，即FCN-8s模型
             out = F.upsample(score, x.size()[2:])
 
