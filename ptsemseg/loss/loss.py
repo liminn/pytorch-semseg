@@ -3,13 +3,16 @@ import torch.nn.functional as F
 
 
 def cross_entropy2d(input, target, weight=None, size_average=True):
+    # 疑问：pytorch里面tensor的size是这样的排序么？
     n, c, h, w = input.size()
     nt, ht, wt = target.size()
 
+    # 如果input和label的尺寸(宽高)不一致，则缩放input至label的尺寸
     # Handle inconsistent size between input and target
     if h != ht and w != wt:  # upsample labels
         input = F.interpolate(input, size=(ht, wt), mode="bilinear", align_corners=True)
 
+    # n,c,h,w -> n,h,w,c，排成c个一维向量
     input = input.transpose(1, 2).transpose(2, 3).contiguous().view(-1, c)
     target = target.view(-1)
     loss = F.cross_entropy(

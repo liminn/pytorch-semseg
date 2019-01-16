@@ -22,13 +22,16 @@ class segnet(nn.Module):
         self.up1 = segnetUp2(64, n_classes)
 
     def forward(self, inputs):
-
+        # 编码网络
+        # 每次下采样时，记录下最大池化索引
         down1, indices_1, unpool_shape1 = self.down1(inputs)
         down2, indices_2, unpool_shape2 = self.down2(down1)
         down3, indices_3, unpool_shape3 = self.down3(down2)
         down4, indices_4, unpool_shape4 = self.down4(down3)
         down5, indices_5, unpool_shape5 = self.down5(down4)
 
+        # 解码网络
+        # 上采样采用unpooling操作(依据编码网络中的最大池化索引)
         up5 = self.up5(down5, indices_5, unpool_shape5)
         up4 = self.up4(up5, indices_4, unpool_shape4)
         up3 = self.up3(up4, indices_3, unpool_shape3)
@@ -37,6 +40,7 @@ class segnet(nn.Module):
 
         return up1
 
+    # 通过VGG16预训练权重初始化编码网络
     def init_vgg16_params(self, vgg16):
         blocks = [self.down1, self.down2, self.down3, self.down4, self.down5]
 

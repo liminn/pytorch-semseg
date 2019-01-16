@@ -13,6 +13,7 @@ class fcn32s(nn.Module):
         super(fcn32s, self).__init__()
         self.learned_billinear = learned_billinear
         self.n_classes = n_classes
+        # 为什么要用functools.partial来包装下
         self.loss = functools.partial(cross_entropy2d, size_average=False)
 
         self.conv_block1 = nn.Sequential(
@@ -62,12 +63,20 @@ class fcn32s(nn.Module):
         )
 
         self.classifier = nn.Sequential(
+            # 原VGG16中，是将7x7x512拉长成25088，然后和4096个神经元进行全连接
+            # 故原参数个数为：25088x4096+4096 = 102764544
+            # 卷积化全连接层：k=7，stride=1，same填充，故空间尺寸不变；卷积核个数为4096
+            # 疑问：为什么不是same填充，是padding=0？？
+            # 输出尺寸为7x7x4096
             nn.Conv2d(512, 4096, 7),
             nn.ReLU(inplace=True),
             nn.Dropout2d(),
+            # 输出尺寸为7x7x4096
             nn.Conv2d(4096, 4096, 1),
             nn.ReLU(inplace=True),
             nn.Dropout2d(),
+            # 通过1x1卷积，将通道数变为num_classes
+            # 输出尺寸为7x7xc
             nn.Conv2d(4096, self.n_classes, 1),
         )
 
@@ -75,18 +84,28 @@ class fcn32s(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
+        # 输入尺寸:224x224x3(以224x244x3为例，官方实现中实际的输入尺寸为500x500x3)
+        # Block1输出尺寸：112x112x64
         conv1 = self.conv_block1(x)
+        # Block2输出尺寸：56x56x128
         conv2 = self.conv_block2(conv1)
+        # Block3输出尺寸：28x28x256
         conv3 = self.conv_block3(conv2)
+        # Block4输出尺寸：14x14x512
         conv4 = self.conv_block4(conv3)
+        # Block5输出尺寸：7x7x512
         conv5 = self.conv_block5(conv4)
-
+        # 输出尺寸为7x7x num_classes
+        # 详见__init__中self.classifier相关注释
         score = self.classifier(conv5)
-
+        # 将score上采样32倍，恢复到原图尺寸
+        # 输出尺寸：224x224x num_classes
+        # 至此，即FCN-32s模型
         out = F.upsample(score, x.size()[2:])
 
         return out
 
+    # 加载VGG16的Block1~Block5的权重(全连接层之前的层)的权重
     def init_vgg16_params(self, vgg16, copy_fc8=True):
         blocks = [
             self.conv_block1,
@@ -194,12 +213,19 @@ class fcn16s(nn.Module):
         conv3 = self.conv_block3(conv2)
         conv4 = self.conv_block4(conv3)
         conv5 = self.conv_block5(conv4)
-
+        # 至此，为FCN-32s模型
         score = self.classifier(conv5)
-        score_pool4 = self.score_pool4(conv4)
 
+        # 通过1x1卷积，将block_4的输出特征的通道数变为num_classes
+        # 输出尺寸：14x14x21
+        score_pool4 = self.score_pool4(conv4)
+        # 将score上采样两倍，输出尺寸为14x14x21，与block_4的输出特征匹配
         score = F.upsample(score, score_pool4.size()[2:])
+        # 和block_4输出进行逐像素相加，输出尺寸为14x14x21
         score += score_pool4
+        # 将score上采样16倍，恢复到原图尺寸
+        # 输出尺寸：224x224x num_classes
+        # 至此，即FCN-16s模型
         out = F.upsample(score, x.size()[2:])
 
         return out
@@ -347,12 +373,24 @@ class fcn8s(nn.Module):
             return out.contiguous()
 
         else:
+            # 通过1x1卷积，将block_4的输出特征的通道数变为num_classes
+            # 输出尺寸为14x14x21
             score_pool4 = self.score_pool4(conv4)
+            # 通过1x1卷积，将block_3的输出特征的通道数变为num_classes
+            # 输出尺寸为28x28x21
             score_pool3 = self.score_pool3(conv3)
+            # 将score上采样两倍，输出尺寸为14x14x21，与block_4的输出特征匹配
             score = F.upsample(score, score_pool4.size()[2:])
+            # 和block_4输出进行逐像素相加，输出尺寸为14x14x21
+            # 至此，即FCN-16s模型
             score += score_pool4
+            # 将score上采样两倍，输出尺寸为28x28x21，与block_3的输出特征匹配
             score = F.upsample(score, score_pool3.size()[2:])
+            # 和block_3输出进行逐像素相加，输出尺寸为28x28x21
             score += score_pool3
+            # 将score上采样8倍，恢复到原图尺寸
+            # 输出尺寸：224x224x num_classes
+            # 至此，即FCN-8s模型
             out = F.upsample(score, x.size()[2:])
 
         return out
